@@ -6,7 +6,8 @@
 [![React: 18](https://img.shields.io/badge/React-18.3-61DAFB.svg)](https://react.dev/)
 [![Three.js](https://img.shields.io/badge/Three.js-r160-black.svg)](https://threejs.org/)
 [![Live Demo: Vercel](https://img.shields.io/badge/Live%20Demo-connectome--agent.vercel.app-000000?logo=vercel)](https://connectome-agent.vercel.app/)
-[![CI Status](https://img.shields.io/badge/CI-Passing-success.svg)](#)
+[![CI Status](https://github.com/manas-dange/connectome-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/manas-dange/connectome-agent/actions/workflows/ci.yml)
+[![PyPI Publish](https://github.com/manas-dange/connectome-agent/actions/workflows/publish-pypi.yml/badge.svg)](https://github.com/manas-dange/connectome-agent/actions/workflows/publish-pypi.yml)
 
 > 🚀 **Live Interactive 3D Simulator:** Explore the Central Complex connectome and benchmark agent navigation live in your browser at **[https://connectome-agent.vercel.app](https://connectome-agent.vercel.app/)**
 
