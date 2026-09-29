@@ -1,0 +1,67 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "connectome-agent"
+version = "1.0.0"
+description = "Biologically constrained reinforcement learning agents using the Drosophila melanogaster Central Complex connectome."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [
+  { name = "Manas Dange", email = "manasdange@users.noreply.github.com" }
+]
+keywords = [
+  "reinforcement-learning",
+  "neuroscience",
+  "connectomics",
+  "drosophila",
+  "central-complex",
+  "pytorch",
+  "ppo",
+  "inductive-bias"
+]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12"
+]
+dependencies = [
+  "torch>=2.0.0",
+  "numpy>=1.24.0",
+  "gym>=0.26.0",
+  "networkx>=3.0",
+  "pandas>=2.0.0",
+  "scipy>=1.10.0",
+  "matplotlib>=3.7.0"
+]
+
+[project.optional-dependencies]
+neuprint = ["neuprint-python>=0.4.26"]
+dev = [
+  "pytest>=7.0.0",
+  "black>=23.0.0",
+  "ruff>=0.1.0"
+]
+api = [
+  "fastapi>=0.100.0",
+  "uvicorn>=0.22.0",
+  "pydantic>=2.0.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/manas-dange/connectome-agent"
+Documentation = "https://github.com/manas-dange/connectome-agent/blob/main/docs/METHODOLOGY.md"
+Repository = "https://github.com/manas-dange/connectome-agent.git"
+"Bug Tracker" = "https://github.com/manas-dange/connectome-agent/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["research*", "backend*"]
