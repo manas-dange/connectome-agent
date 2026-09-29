@@ -68,3 +68,4 @@ Thumbs.db
 # Heavy training logs & temporary scratch
 research/experiments/logs/
 scratch/
+social/
