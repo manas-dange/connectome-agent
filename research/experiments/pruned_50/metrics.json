@@ -1,0 +1,11 @@
+{
+  "final_reward": -14.268135070800765,
+  "max_reward": 0.3633823394775375,
+  "mean_reward_last_n": -21.16247110366826,
+  "std_reward_last_n": 13.319832074079054,
+  "mean_length_last_n": 200.0,
+  "episodes_to_50_pct": 18,
+  "episodes_to_90_pct": 18,
+  "total_episodes": 20,
+  "path_efficiency": 0.0
+}
