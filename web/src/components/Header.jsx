@@ -12,15 +12,15 @@ export const Header = ({ currentTab, onTabChange, viewMode, onViewModeChange, on
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
         borderBottom: '1px solid var(--border-subtle)',
-        display: 'flex',
+        display: 'grid',
+        gridTemplateColumns: '1fr auto 1fr',
         alignItems: 'center',
-        justifyContent: 'space-between',
         padding: '0 var(--space-4)',
         zIndex: 30,
         flexShrink: 0
       }}>
         {/* Brand & Live Dataset Chip */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', justifySelf: 'start', minWidth: 0 }}>
           <div
             onClick={() => onTabChange('demo')}
             style={{
@@ -28,7 +28,8 @@ export const Header = ({ currentTab, onTabChange, viewMode, onViewModeChange, on
               alignItems: 'center',
               gap: '10px',
               cursor: 'pointer',
-              userSelect: 'none'
+              userSelect: 'none',
+              whiteSpace: 'nowrap'
             }}
           >
             <div style={{
@@ -41,7 +42,8 @@ export const Header = ({ currentTab, onTabChange, viewMode, onViewModeChange, on
               alignItems: 'center',
               justifyContent: 'center',
               color: 'var(--accent-primary)',
-              boxShadow: '0 0 14px rgba(56, 189, 248, 0.25)'
+              boxShadow: '0 0 14px rgba(56, 189, 248, 0.25)',
+              flexShrink: 0
             }}>
               <Brain size={18} />
             </div>
@@ -57,7 +59,7 @@ export const Header = ({ currentTab, onTabChange, viewMode, onViewModeChange, on
           </div>
 
           {/* Biological Dataset Tag */}
-          <div style={{
+          <div className="header-dataset-chip" style={{
             display: 'flex',
             alignItems: 'center',
             gap: '7px',
@@ -66,14 +68,15 @@ export const Header = ({ currentTab, onTabChange, viewMode, onViewModeChange, on
             borderRadius: 'var(--radius-full)',
             padding: '4px 12px',
             fontSize: '11px',
-            color: 'var(--text-secondary)'
+            color: 'var(--text-secondary)',
+            whiteSpace: 'nowrap'
           }}>
             <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: 'var(--accent-success)', boxShadow: '0 0 8px var(--accent-success)' }} />
             <span>male-cns:v1.0 &bull; <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>1,243 CX Neurons</strong></span>
           </div>
         </div>
 
-        {/* Main Navigation Tabs */}
+        {/* Main Navigation Tabs — Strictly Centered */}
         <nav style={{
           display: 'flex',
           alignItems: 'center',
@@ -81,7 +84,9 @@ export const Header = ({ currentTab, onTabChange, viewMode, onViewModeChange, on
           background: 'rgba(255, 255, 255, 0.03)',
           padding: '4px',
           borderRadius: 'var(--radius-md)',
-          border: '1px solid var(--border-subtle)'
+          border: '1px solid var(--border-subtle)',
+          justifySelf: 'center',
+          whiteSpace: 'nowrap'
         }}>
           <button
             onClick={() => onTabChange('demo')}
@@ -150,58 +155,65 @@ export const Header = ({ currentTab, onTabChange, viewMode, onViewModeChange, on
           </button>
         </nav>
 
-        {/* Action Controls & External Links */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-          {/* View Mode Toggle (Shown when on Demo tab) */}
-          {currentTab === 'demo' && (
-            <div style={{
-              display: 'flex',
-              background: 'rgba(255, 255, 255, 0.04)',
-              padding: '2px',
-              borderRadius: 'var(--radius-sm)',
-              border: '1px solid var(--border-subtle)'
-            }}>
-              <button
-                onClick={() => onViewModeChange('single')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '5px 11px',
-                  fontSize: '11px',
-                  borderRadius: 'var(--radius-xs)',
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: viewMode === 'single' ? 'var(--accent-primary)' : 'transparent',
-                  color: viewMode === 'single' ? '#090A0F' : 'var(--text-secondary)',
-                  fontWeight: viewMode === 'single' ? 600 : 500,
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <Layers size={13} /> Single View
-              </button>
-              
-              <button
-                onClick={() => onViewModeChange('compare')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '5px 11px',
-                  fontSize: '11px',
-                  borderRadius: 'var(--radius-xs)',
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: viewMode === 'compare' ? 'var(--accent-primary)' : 'transparent',
-                  color: viewMode === 'compare' ? '#090A0F' : 'var(--text-secondary)',
-                  fontWeight: viewMode === 'compare' ? 600 : 500,
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <GitCompare size={13} /> Compare
-              </button>
-            </div>
-          )}
+        {/* Action Controls & External Links — Persistently Positioned at Right */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', justifySelf: 'end', minWidth: 0 }}>
+          {/* View Mode Toggle (Persistently sized to prevent header reflow) */}
+          <div className="header-view-toggle" style={{
+            display: 'flex',
+            background: 'rgba(255, 255, 255, 0.04)',
+            padding: '2px',
+            borderRadius: 'var(--radius-sm)',
+            border: '1px solid var(--border-subtle)',
+            whiteSpace: 'nowrap'
+          }}>
+            <button
+              onClick={() => {
+                onViewModeChange('single');
+                if (currentTab !== 'demo') onTabChange('demo');
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '5px 11px',
+                fontSize: '11px',
+                borderRadius: 'var(--radius-xs)',
+                border: 'none',
+                cursor: 'pointer',
+                background: (currentTab === 'demo' && viewMode === 'single') ? 'var(--accent-primary)' : 'transparent',
+                color: (currentTab === 'demo' && viewMode === 'single') ? '#090A0F' : 'var(--text-secondary)',
+                fontWeight: (currentTab === 'demo' && viewMode === 'single') ? 600 : 500,
+                transition: 'all 0.15s ease'
+              }}
+              title="Single 3D Viewport (3D Simulation)"
+            >
+              <Layers size={13} /> Single View
+            </button>
+            
+            <button
+              onClick={() => {
+                onViewModeChange('compare');
+                if (currentTab !== 'demo') onTabChange('demo');
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '5px 11px',
+                fontSize: '11px',
+                borderRadius: 'var(--radius-xs)',
+                border: 'none',
+                cursor: 'pointer',
+                background: (currentTab === 'demo' && viewMode === 'compare') ? 'var(--accent-primary)' : 'transparent',
+                color: (currentTab === 'demo' && viewMode === 'compare') ? '#090A0F' : 'var(--text-secondary)',
+                fontWeight: (currentTab === 'demo' && viewMode === 'compare') ? 600 : 500,
+                transition: 'all 0.15s ease'
+              }}
+              title="Side-by-side Agent Comparison (3D Simulation)"
+            >
+              <GitCompare size={13} /> Compare
+            </button>
+          </div>
 
           {/* Keyboard Shortcuts Dialog Button */}
           <button

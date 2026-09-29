@@ -352,11 +352,23 @@ dialog::backdrop {
   }
 }
 
+@media (max-width: 1100px) {
+  .header-dataset-chip {
+    display: none !important;
+  }
+}
+
 @media (max-width: 860px) {
   .app-container {
     grid-template-columns: 1fr;
     grid-template-rows: 52vh 1fr;
     overflow-y: auto;
+  }
+}
+
+@media (max-width: 820px) {
+  .header-view-toggle {
+    display: none !important;
   }
 }
 
