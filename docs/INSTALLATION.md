@@ -54,6 +54,8 @@ You should see all 14 unit tests pass.
 
 ## 3. Interactive Web Demo (React + Vite + Three.js)
 
+> 💡 **Instant Live Access:** You can explore the pre-deployed 3D simulator directly at **[https://connectome-agent.vercel.app/](https://connectome-agent.vercel.app/)** without local setup.
+
 ### Step 1: Navigate to the Web Directory
 ```bash
 cd web

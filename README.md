@@ -5,7 +5,10 @@
 [![PyTorch: 2.0+](https://img.shields.io/badge/PyTorch-2.0%2B-orange.svg)](https://pytorch.org/)
 [![React: 18](https://img.shields.io/badge/React-18.3-61DAFB.svg)](https://react.dev/)
 [![Three.js](https://img.shields.io/badge/Three.js-r160-black.svg)](https://threejs.org/)
+[![Live Demo: Vercel](https://img.shields.io/badge/Live%20Demo-connectome--agent.vercel.app-000000?logo=vercel)](https://connectome-agent.vercel.app/)
 [![CI Status](https://img.shields.io/badge/CI-Passing-success.svg)](#)
+
+> 🚀 **Live Interactive 3D Simulator:** Explore the Central Complex connectome and benchmark agent navigation live in your browser at **[https://connectome-agent.vercel.app](https://connectome-agent.vercel.app/)**
 
 > **Can real biological neural circuits teach artificial agents to navigate faster and more efficiently?**  
 > We train reinforcement learning agents whose recurrent network architecture is **literally constrained by the fruit fly connectome** (*Drosophila melanogaster* Central Complex) and evaluate them against unconstrained deep learning baselines in 3D navigation.
@@ -53,6 +56,8 @@ When Google and HHMI Janelia released the complete *Drosophila* connectome (166k
 ---
 
 ## 🌐 Interactive 3D Web Visualizer
+
+> 🎮 **Live Demo:** Explore the simulator directly in your browser without installing anything at **[connectome-agent.vercel.app](https://connectome-agent.vercel.app/)**!
 
 We built a dark-lab aesthetic web demo (React 18 + Vite + Three.js) that renders the Central Complex connectome and lets you inspect real-time navigation:
 

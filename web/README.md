@@ -1,6 +1,8 @@
 # Connectome Navigator Web Demo
-
+ 
 An interactive 3D web visualizer built with **React 18**, **Vite**, and **Three.js** to explore the *Drosophila melanogaster* Central Complex connectome and observe reinforcement learning agents navigating in 3D.
+
+> 🚀 **Live Demo:** [https://connectome-agent.vercel.app/](https://connectome-agent.vercel.app/)
 
 ---
 

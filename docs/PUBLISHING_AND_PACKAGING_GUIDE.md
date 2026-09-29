@@ -79,6 +79,15 @@ A DOI makes your code and dataset permanently citable in academic literature (e.
 
 ---
 
+### D. Interactive Web App Deployment (Vercel)
+
+The 3D interactive simulator is hosted globally on Vercel:
+- **Production URL**: [https://connectome-agent.vercel.app/](https://connectome-agent.vercel.app/)
+- **Framework & Root**: Vite + React 18, located in `/web`
+- **Continuous Deployment**: Automatically syncs on every push to `main`.
+
+---
+
 ## 2. How to Publish a Research Paper
 
 ### A. Recommended Academic Venues

@@ -58,6 +58,7 @@ api = [
 
 [project.urls]
 Homepage = "https://github.com/manas-dange/connectome-agent"
+"Live Demo" = "https://connectome-agent.vercel.app/"
 Documentation = "https://github.com/manas-dange/connectome-agent/blob/main/docs/METHODOLOGY.md"
 Repository = "https://github.com/manas-dange/connectome-agent.git"
 "Bug Tracker" = "https://github.com/manas-dange/connectome-agent/issues"
