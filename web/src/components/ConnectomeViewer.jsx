@@ -1,7 +1,20 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { Orbit, Crosshair, Brain, Info } from 'lucide-react';
+import {
+  Orbit,
+  Crosshair,
+  Brain,
+  Info,
+  Layers,
+  Compass,
+  Video,
+  RotateCcw,
+  X,
+  Focus,
+  Sparkles,
+  Check
+} from 'lucide-react';
 
 /**
  * Constructs a stylized, biologically recognizable 3D Drosophila melanogaster (fruit fly) model
@@ -202,11 +215,20 @@ export const ConnectomeViewer = ({
 }) => {
   const containerRef = useRef(null);
   const [hoveredNeuron, setHoveredNeuron] = useState(null);
+  const [selectedNeuron, setSelectedNeuron] = useState(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
-  const [cameraMode, setCameraMode] = useState('orbit'); // 'orbit' or 'chase'
+  const [cameraMode, setCameraMode] = useState('orbit'); // 'orbit', 'chase', 'top', 'front'
   const cameraModeRef = useRef('orbit');
   cameraModeRef.current = cameraMode;
   const chaseDistanceRef = useRef(18.0);
+
+  // Layer toggles
+  const [showSynapses, setShowSynapses] = useState(true);
+  const [showTrail, setShowTrail] = useState(true);
+  const [showGrid, setShowGrid] = useState(true);
+  const [isAutoRotate, setIsAutoRotate] = useState(true);
+  const autoRotateRef = useRef(true);
+  autoRotateRef.current = isAutoRotate;
 
   useEffect(() => {
     if (!connectomeData || !containerRef.current) return;
@@ -215,7 +237,7 @@ export const ConnectomeViewer = ({
     const width = container.clientWidth;
     const height = container.clientHeight;
 
-    // 1. Scene Setup — Lighter studio slate background with atmospheric depth
+    // 1. Scene Setup — Studio slate background with atmospheric depth
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x1B1F2A);
     scene.fog = new THREE.Fog(0x1B1F2A, 140, 520);
@@ -223,6 +245,7 @@ export const ConnectomeViewer = ({
     // 2. Camera Setup (Frustum framed for expanded globe)
     const camera = new THREE.PerspectiveCamera(55, width / height, 0.1, 2000);
     camera.position.set(0, 36, 195);
+    const currentLookAt = new THREE.Vector3(0, 0, 0);
 
     // 3. Renderer Setup
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
@@ -245,10 +268,11 @@ export const ConnectomeViewer = ({
     const headLight = new THREE.PointLight(0xffffff, 0.9, 1200);
     scene.add(headLight);
 
-    // 5. Arena Ground Floor & Spatial Grid (scaled for expanded ~110-unit globe)
+    // 5. Arena Ground Floor & Spatial Grid Group
+    const gridGroup = new THREE.Group();
     const arenaGrid = new THREE.PolarGridHelper(90, 18, 8, 64, 0x475569, 0x2A3448);
     arenaGrid.position.y = -55;
-    scene.add(arenaGrid);
+    gridGroup.add(arenaGrid);
 
     // Arena boundary perimeter ring
     const ringGeom = new THREE.RingGeometry(89.4, 90.6, 64);
@@ -256,7 +280,7 @@ export const ConnectomeViewer = ({
     const floorRing = new THREE.Mesh(ringGeom, ringMat);
     floorRing.rotation.x = Math.PI / 2;
     floorRing.position.y = -55;
-    scene.add(floorRing);
+    gridGroup.add(floorRing);
 
     // 4 spatial navigational beacons marking arena boundaries (N, S, E, W)
     const beaconGeom = new THREE.CylinderGeometry(0.4, 0.4, 45, 8);
@@ -264,8 +288,9 @@ export const ConnectomeViewer = ({
     [ [90, 0], [-90, 0], [0, 90], [0, -90] ].forEach(([bx, bz]) => {
       const beacon = new THREE.Mesh(beaconGeom, beaconMat);
       beacon.position.set(bx, -32.5, bz);
-      scene.add(beacon);
+      gridGroup.add(beacon);
     });
+    scene.add(gridGroup);
 
     // 6. Instanced Neurons (High-contrast, clearly visible against the slate background)
     const nodes = connectomeData.nodes || [];
@@ -337,6 +362,18 @@ export const ConnectomeViewer = ({
     });
     const lineSegments = new THREE.LineSegments(edgeGeometry, edgeMaterial);
     scene.add(lineSegments);
+
+    // Selection Ring Marker (pulsing highlight on pinned neuron)
+    const selectMarkerGeom = new THREE.RingGeometry(2.4, 3.2, 32);
+    const selectMarkerMat = new THREE.MeshBasicMaterial({
+      color: 0xF59E0B, // Vibrant Amber highlight
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.95
+    });
+    const selectMarker = new THREE.Mesh(selectMarkerGeom, selectMarkerMat);
+    selectMarker.visible = false;
+    scene.add(selectMarker);
 
     // 8. 3D Drosophila Fly Model (Authentic NeuroMechFly v2 GLTF model with procedural fallback)
     const agentMesh = new THREE.Group();
@@ -443,16 +480,16 @@ export const ConnectomeViewer = ({
 
     // 10. Interactive Drag Orbit & Raycaster
     let isDragging = false;
+    let mouseDownPos = { x: 0, y: 0 };
     let prevMouseX = 0;
     let prevMouseY = 0;
     let rotationSpeedX = 0;
     let rotationSpeedY = 0;
-    let autoRotate = true;
 
     const onMouseDown = (e) => {
+      mouseDownPos = { x: e.clientX, y: e.clientY };
       if (cameraModeRef.current === 'chase') return;
       isDragging = true;
-      autoRotate = false;
       prevMouseX = e.clientX;
       prevMouseY = e.clientY;
     };
@@ -491,7 +528,29 @@ export const ConnectomeViewer = ({
       }
     };
 
-    const onMouseUp = () => {
+    const onMouseUp = (e) => {
+      // Click inspection detection (if mouse didn't drag)
+      const distMoved = Math.hypot(e.clientX - mouseDownPos.x, e.clientY - mouseDownPos.y);
+      if (distMoved < 6 && !isMini) {
+        const rect = container.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        const mouseNorm = new THREE.Vector2(
+          (mouseX / rect.width) * 2 - 1,
+          -(mouseY / rect.height) * 2 + 1
+        );
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(mouseNorm, camera);
+        const intersects = raycaster.intersectObject(instancedMesh);
+
+        if (intersects.length > 0) {
+          const instanceId = intersects[0].instanceId;
+          const node = nodes[instanceId];
+          if (node) {
+            setSelectedNeuron(node);
+          }
+        }
+      }
       isDragging = false;
     };
 
@@ -522,7 +581,7 @@ export const ConnectomeViewer = ({
       const delta = clock.getDelta();
       const elapsedTime = clock.getElapsedTime();
 
-      // Camera Tracking: Chase Fly vs Orbit Arena
+      // Camera Tracking: Chase Fly vs Presets/Orbit
       if (cameraModeRef.current === 'chase' && agentMesh) {
         // Immersive third-person chase camera following the fly
         const flyWorldPos = new THREE.Vector3();
@@ -542,17 +601,26 @@ export const ConnectomeViewer = ({
         const lookAhead = flyWorldPos.clone().add(flyForward.clone().multiplyScalar(10.0));
         camera.lookAt(lookAhead);
       } else {
-        // Continuous slow auto-rotation
-        if (autoRotate) {
+        // Smooth transition to target camera position (presets or focused neuron)
+        if (container._targetCamPos) {
+          camera.position.lerp(container._targetCamPos, 0.08);
+          if (container._targetLookAt) {
+            currentLookAt.lerp(container._targetLookAt, 0.08);
+            camera.lookAt(currentLookAt);
+          }
+          if (camera.position.distanceTo(container._targetCamPos) < 0.5) {
+            container._targetCamPos = null;
+          }
+        }
+
+        // Continuous slow auto-rotation if enabled and not dragging
+        if (autoRotateRef.current && !container._targetCamPos && !isDragging) {
           scene.rotation.y += 0.003;
-        } else {
+        } else if (!autoRotateRef.current && !container._targetCamPos) {
           scene.rotation.y += rotationSpeedY;
           scene.rotation.x += rotationSpeedX;
           rotationSpeedX *= 0.92;
           rotationSpeedY *= 0.92;
-          if (Math.abs(rotationSpeedX) < 0.0001 && Math.abs(rotationSpeedY) < 0.0001 && !isDragging) {
-            autoRotate = true;
-          }
         }
       }
 
@@ -562,6 +630,13 @@ export const ConnectomeViewer = ({
       // Rotate goal marker
       goalMesh.rotation.x += 0.015;
       goalMesh.rotation.y += 0.02;
+
+      // Pulse selection marker if visible
+      if (selectMarker.visible) {
+        const pulse = 1.0 + Math.sin(elapsedTime * 6) * 0.12;
+        selectMarker.scale.set(pulse, pulse, pulse);
+        selectMarker.lookAt(camera.position);
+      }
 
       // Animate fly wings
       if (agentMesh && agentMesh.userData && agentMesh.userData.updateWings) {
@@ -594,6 +669,11 @@ export const ConnectomeViewer = ({
     container._instancedMesh = instancedMesh;
     container._defaultColors = defaultColors;
     container._nodes = nodes;
+    container._lineSegments = lineSegments;
+    container._gridGroup = gridGroup;
+    container._selectMarker = selectMarker;
+    container._targetCamPos = null;
+    container._targetLookAt = null;
     container._prevAgentPos = null;
 
     return () => {
@@ -708,65 +788,197 @@ export const ConnectomeViewer = ({
     }
   }, [agentPosition, goalPosition, stepIndex]);
 
-  const handleToggleCamera = (mode) => {
-    setCameraMode(mode);
-    if (mode === 'orbit' && containerRef.current && containerRef.current._camera) {
-      containerRef.current._camera.position.set(0, 36, 195);
-      containerRef.current._camera.lookAt(0, 0, 0);
+  // Update 3D selection marker when selectedNeuron changes
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !container._selectMarker) return;
+    if (selectedNeuron) {
+      container._selectMarker.position.set(selectedNeuron.x, selectedNeuron.y, selectedNeuron.z);
+      container._selectMarker.visible = true;
+    } else {
+      container._selectMarker.visible = false;
     }
+  }, [selectedNeuron]);
+
+  // Layer visibility toggles
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    if (container._lineSegments) container._lineSegments.visible = showSynapses;
+    if (container._trailLine) container._trailLine.visible = showTrail;
+    if (container._gridGroup) container._gridGroup.visible = showGrid;
+  }, [showSynapses, showTrail, showGrid]);
+
+  const handleCameraPreset = (mode) => {
+    const container = containerRef.current;
+    if (!container || !container._camera) return;
+
+    setCameraMode(mode);
+    if (mode === 'orbit') {
+      container._targetCamPos = new THREE.Vector3(0, 36, 195);
+      container._targetLookAt = new THREE.Vector3(0, 0, 0);
+    } else if (mode === 'top') {
+      container._targetCamPos = new THREE.Vector3(0, 240, 0.01);
+      container._targetLookAt = new THREE.Vector3(0, 0, 0);
+    } else if (mode === 'front') {
+      container._targetCamPos = new THREE.Vector3(0, 8, 220);
+      container._targetLookAt = new THREE.Vector3(0, 8, 0);
+    }
+  };
+
+  const handleResetCamera = () => {
+    const container = containerRef.current;
+    if (!container || !container._camera) return;
+    setCameraMode('orbit');
+    if (container._scene) container._scene.rotation.set(0, 0, 0);
+    container._targetCamPos = new THREE.Vector3(0, 36, 195);
+    container._targetLookAt = new THREE.Vector3(0, 0, 0);
+  };
+
+  const handleFocusNeuron = (neuron) => {
+    const container = containerRef.current;
+    if (!container || !container._camera || !neuron) return;
+    setCameraMode('orbit');
+    container._targetCamPos = new THREE.Vector3(neuron.x, neuron.y + 12, neuron.z + 36);
+    container._targetLookAt = new THREE.Vector3(neuron.x, neuron.y, neuron.z);
   };
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
       <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
 
-      {/* Neural Manifold Clarification Badge (Single View) */}
+      {/* Top Left: Neural Manifold Badge & Layer Controls (Single View) */}
       {!isMini && !label && (
         <div style={{
           position: 'absolute',
           top: '12px',
           left: '16px',
           display: 'flex',
-          alignItems: 'center',
+          flexDirection: 'column',
           gap: '8px',
-          background: 'rgba(27, 31, 42, 0.92)',
-          backdropFilter: 'blur(8px)',
-          border: '1px solid rgba(91, 140, 255, 0.3)',
-          borderRadius: 'var(--radius-full)',
-          padding: '6px 14px',
-          fontSize: '11px',
-          boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
           zIndex: 10
         }}>
-          <Brain size={14} color="var(--accent-primary)" />
-          <span style={{ color: 'var(--text-secondary)' }}>
-            <strong style={{ color: 'var(--text-primary)' }}>Fly Brain Manifold:</strong> 3D lattice represents the Central Complex connectome (850 biological neurons, 44k synapses)
-          </span>
+          {/* Manifold Identity Tag */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: 'rgba(18, 22, 34, 0.88)',
+            backdropFilter: 'blur(12px)',
+            border: '1px solid rgba(56, 189, 248, 0.28)',
+            borderRadius: 'var(--radius-full)',
+            padding: '6px 14px',
+            fontSize: '11px',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.4)'
+          }}>
+            <Brain size={14} color="var(--accent-primary)" />
+            <span style={{ color: 'var(--text-secondary)' }}>
+              <strong style={{ color: 'var(--text-primary)' }}>Fly Brain Manifold:</strong> 3D Central Complex (850 Neurons, 44k Synapses)
+            </span>
+          </div>
+
+          {/* Quick Layer Visibility Toggles */}
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            background: 'rgba(18, 22, 34, 0.82)',
+            backdropFilter: 'blur(12px)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: 'var(--radius-md)',
+            padding: '3px 6px',
+            width: 'fit-content'
+          }}>
+            <button
+              onClick={() => setShowSynapses(!showSynapses)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                padding: '4px 8px',
+                fontSize: '10.5px',
+                fontWeight: 500,
+                borderRadius: 'var(--radius-xs)',
+                border: 'none',
+                cursor: 'pointer',
+                background: showSynapses ? 'rgba(56, 189, 248, 0.2)' : 'transparent',
+                color: showSynapses ? '#38BDF8' : 'var(--text-tertiary)',
+                transition: 'all 0.15s ease'
+              }}
+              title="Toggle synaptic connections"
+            >
+              <Layers size={11} /> Synapses
+            </button>
+
+            <button
+              onClick={() => setShowTrail(!showTrail)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                padding: '4px 8px',
+                fontSize: '10.5px',
+                fontWeight: 500,
+                borderRadius: 'var(--radius-xs)',
+                border: 'none',
+                cursor: 'pointer',
+                background: showTrail ? 'rgba(56, 189, 248, 0.2)' : 'transparent',
+                color: showTrail ? '#38BDF8' : 'var(--text-tertiary)',
+                transition: 'all 0.15s ease'
+              }}
+              title="Toggle flight trajectory trail"
+            >
+              <Orbit size={11} /> Trail
+            </button>
+
+            <button
+              onClick={() => setShowGrid(!showGrid)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                padding: '4px 8px',
+                fontSize: '10.5px',
+                fontWeight: 500,
+                borderRadius: 'var(--radius-xs)',
+                border: 'none',
+                cursor: 'pointer',
+                background: showGrid ? 'rgba(56, 189, 248, 0.2)' : 'transparent',
+                color: showGrid ? '#38BDF8' : 'var(--text-tertiary)',
+                transition: 'all 0.15s ease'
+              }}
+              title="Toggle spatial grid and beacons"
+            >
+              <Compass size={11} /> Grid
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Camera Tracking Mode Toggle (Single View) */}
+      {/* Top Right: Camera Presets & Tracking Bar (Single View) */}
       {!isMini && (
         <div style={{
           position: 'absolute',
           top: '12px',
           right: '16px',
           display: 'flex',
-          background: 'rgba(27, 31, 42, 0.92)',
-          backdropFilter: 'blur(8px)',
+          alignItems: 'center',
+          gap: '4px',
+          background: 'rgba(18, 22, 34, 0.88)',
+          backdropFilter: 'blur(12px)',
           border: '1px solid var(--border-subtle)',
           borderRadius: 'var(--radius-md)',
-          padding: '3px',
-          boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
+          padding: '4px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
           zIndex: 10
         }}>
           <button
-            onClick={() => handleToggleCamera('orbit')}
+            onClick={() => handleCameraPreset('orbit')}
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              padding: '5px 12px',
+              gap: '5px',
+              padding: '5px 10px',
               fontSize: '11px',
               fontWeight: 500,
               borderRadius: 'var(--radius-sm)',
@@ -776,17 +988,18 @@ export const ConnectomeViewer = ({
               color: cameraMode === 'orbit' ? '#FFFFFF' : 'var(--text-secondary)',
               transition: 'all 0.15s ease'
             }}
+            title="Free Orbit View"
           >
-            <Orbit size={13} /> Arena Orbit
+            <Orbit size={13} /> Orbit
           </button>
           
           <button
-            onClick={() => handleToggleCamera('chase')}
+            onClick={() => handleCameraPreset('chase')}
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              padding: '5px 12px',
+              gap: '5px',
+              padding: '5px 10px',
               fontSize: '11px',
               fontWeight: 500,
               borderRadius: 'var(--radius-sm)',
@@ -796,8 +1009,94 @@ export const ConnectomeViewer = ({
               color: cameraMode === 'chase' ? '#FFFFFF' : 'var(--text-secondary)',
               transition: 'all 0.15s ease'
             }}
+            title="Lock third-person camera behind fly"
           >
-            <Crosshair size={13} /> Track Fly (Chase Cam)
+            <Crosshair size={13} /> Chase Cam
+          </button>
+
+          <button
+            onClick={() => handleCameraPreset('top')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              padding: '5px 10px',
+              fontSize: '11px',
+              fontWeight: 500,
+              borderRadius: 'var(--radius-sm)',
+              border: 'none',
+              cursor: 'pointer',
+              background: cameraMode === 'top' ? 'var(--accent-primary)' : 'transparent',
+              color: cameraMode === 'top' ? '#FFFFFF' : 'var(--text-secondary)',
+              transition: 'all 0.15s ease'
+            }}
+            title="Top-down Dorsal view"
+          >
+            <Compass size={13} /> Top
+          </button>
+
+          <button
+            onClick={() => handleCameraPreset('front')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              padding: '5px 10px',
+              fontSize: '11px',
+              fontWeight: 500,
+              borderRadius: 'var(--radius-sm)',
+              border: 'none',
+              cursor: 'pointer',
+              background: cameraMode === 'front' ? 'var(--accent-primary)' : 'transparent',
+              color: cameraMode === 'front' ? '#FFFFFF' : 'var(--text-secondary)',
+              transition: 'all 0.15s ease'
+            }}
+            title="Frontal Coronal view"
+          >
+            <Video size={13} /> Front
+          </button>
+
+          <div style={{ width: '1px', height: '18px', background: 'var(--border-subtle)', margin: '0 2px' }} />
+
+          <button
+            onClick={() => setIsAutoRotate(!isAutoRotate)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '5px 9px',
+              fontSize: '11px',
+              fontWeight: 500,
+              borderRadius: 'var(--radius-sm)',
+              border: 'none',
+              cursor: 'pointer',
+              background: isAutoRotate ? 'rgba(56, 189, 248, 0.18)' : 'transparent',
+              color: isAutoRotate ? '#38BDF8' : 'var(--text-tertiary)',
+              transition: 'all 0.15s ease'
+            }}
+            title="Toggle arena auto-spin"
+          >
+            <Sparkles size={12} /> Auto
+          </button>
+
+          <button
+            onClick={handleResetCamera}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '28px',
+              height: '28px',
+              borderRadius: 'var(--radius-sm)',
+              border: 'none',
+              cursor: 'pointer',
+              background: 'transparent',
+              color: 'var(--text-secondary)',
+              transition: 'all 0.15s ease'
+            }}
+            title="Reset Camera Orientation"
+          >
+            <RotateCcw size={13} />
           </button>
         </div>
       )}
@@ -832,14 +1131,14 @@ export const ConnectomeViewer = ({
           left: '16px',
           display: 'flex',
           gap: 'var(--space-3)',
-          background: 'rgba(27, 31, 42, 0.9)',
-          backdropFilter: 'blur(8px)',
+          background: 'rgba(18, 22, 34, 0.88)',
+          backdropFilter: 'blur(10px)',
           border: '1px solid var(--border-subtle)',
           borderRadius: 'var(--radius-md)',
           padding: '7px 16px',
           fontSize: '11px',
           color: 'var(--text-secondary)',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.35)'
+          boxShadow: '0 4px 16px rgba(0,0,0,0.35)'
         }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
             <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#38BDF8' }} /> Sensory (ER/PN)
@@ -859,19 +1158,138 @@ export const ConnectomeViewer = ({
         </div>
       )}
 
+      {/* Pinned Inspected Neuron HUD Card (Single View) */}
+      {!isMini && selectedNeuron && (
+        <div style={{
+          position: 'absolute',
+          bottom: '16px',
+          right: '16px',
+          width: '280px',
+          background: 'rgba(18, 22, 34, 0.94)',
+          backdropFilter: 'blur(16px)',
+          border: '1px solid rgba(56, 189, 248, 0.4)',
+          borderRadius: 'var(--radius-lg)',
+          padding: '14px 16px',
+          boxShadow: '0 12px 36px rgba(0,0,0,0.6)',
+          zIndex: 25,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px',
+          animation: 'fadeIn 0.2s ease-out'
+        }}>
+          {/* Card Header */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+              <div style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: '#F59E0B',
+                boxShadow: '0 0 10px #F59E0B'
+              }} />
+              <span className="font-mono" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                Neuron #{selectedNeuron.id}
+              </span>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {selectedNeuron.is_hub && (
+                <span style={{
+                  fontSize: '10px',
+                  fontWeight: 600,
+                  background: 'rgba(245, 158, 11, 0.2)',
+                  color: '#F59E0B',
+                  border: '1px solid rgba(245, 158, 11, 0.4)',
+                  padding: '1px 6px',
+                  borderRadius: 'var(--radius-full)'
+                }}>
+                  ⭐ HUB
+                </span>
+              )}
+              <button
+                onClick={() => setSelectedNeuron(null)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-tertiary)',
+                  cursor: 'pointer',
+                  padding: '2px',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+                title="Close"
+              >
+                <X size={15} />
+              </button>
+            </div>
+          </div>
+
+          {/* Details Table */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '6px',
+            background: 'rgba(9, 10, 15, 0.5)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: 'var(--radius-sm)',
+            padding: '8px 10px',
+            fontSize: '11px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Cell Type:</span>
+              <span className="font-mono" style={{ color: 'var(--accent-primary)', fontWeight: 500 }}>
+                {selectedNeuron.type || 'Intrinsic CX'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Neuropil ROI:</span>
+              <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>
+                {selectedNeuron.roi || 'Central Complex'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Synaptic Degree:</span>
+              <span className="font-mono" style={{ color: 'var(--accent-success)', fontWeight: 500 }}>
+                {selectedNeuron.degree || 32} synapses
+              </span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Coordinates:</span>
+              <span className="font-mono" style={{ color: 'var(--text-tertiary)', fontSize: '10.5px' }}>
+                [{selectedNeuron.x.toFixed(1)}, {selectedNeuron.y.toFixed(1)}, {selectedNeuron.z.toFixed(1)}]
+              </span>
+            </div>
+          </div>
+
+          {/* Focus Action */}
+          <button
+            onClick={() => handleFocusNeuron(selectedNeuron)}
+            className="btn btn-primary"
+            style={{
+              padding: '6px 12px',
+              fontSize: '11.5px',
+              gap: '6px',
+              width: '100%'
+            }}
+          >
+            <Focus size={13} /> Focus Camera in 3D
+          </button>
+        </div>
+      )}
+
       {/* Hover Tooltip */}
-      {hoveredNeuron && (
+      {hoveredNeuron && !selectedNeuron && (
         <div style={{
           position: 'absolute',
           left: `${tooltipPos.x}px`,
           top: `${tooltipPos.y}px`,
-          background: 'var(--bg-panel-raised)',
+          background: 'rgba(18, 22, 34, 0.94)',
           border: '1px solid var(--accent-primary)',
           borderRadius: 'var(--radius-sm)',
           padding: '8px 12px',
           fontSize: '11px',
           pointerEvents: 'none',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+          boxShadow: '0 6px 20px rgba(0,0,0,0.6)',
           zIndex: 20
         }}>
           <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '2px' }}>
@@ -880,6 +1298,9 @@ export const ConnectomeViewer = ({
           <div style={{ color: 'var(--text-secondary)' }}>Type: <span style={{ color: 'var(--accent-primary)' }}>{hoveredNeuron.type}</span></div>
           <div style={{ color: 'var(--text-secondary)' }}>Neuropil ROI: {hoveredNeuron.roi}</div>
           <div style={{ color: 'var(--text-secondary)' }}>Degree: {hoveredNeuron.degree} connections</div>
+          <div style={{ color: 'var(--text-tertiary)', fontSize: '10px', marginTop: '4px', fontStyle: 'italic' }}>
+            Click to inspect & pin
+          </div>
         </div>
       )}
     </div>

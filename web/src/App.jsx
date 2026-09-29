@@ -20,6 +20,7 @@ export function App() {
   const [agentType, setAgentType] = useState('connectome'); // 'connectome' or 'baseline'
   const [currentStep, setCurrentStep] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -52,27 +53,37 @@ export function App() {
   const activeTrajectory = agentType === 'connectome' ? connectomeTraj : baselineTraj;
   const totalSteps = activeTrajectory?.steps?.length || 200;
 
-  // 3. Playback Loop
+  // 3. Playback Loop (Variable speed)
   useEffect(() => {
     if (!isPlaying) return;
+
+    const baseInterval = 80;
+    const intervalMs = Math.max(16, Math.round(baseInterval / playbackSpeed));
 
     const interval = setInterval(() => {
       setCurrentStep((prev) => {
         if (prev + 1 >= totalSteps) {
-          // Loop playback or pause
+          // Loop playback
           return 0;
         }
         return prev + 1;
       });
-    }, 80); // 80ms per frame
+    }, intervalMs);
 
     return () => clearInterval(interval);
-  }, [isPlaying, totalSteps]);
+  }, [isPlaying, totalSteps, playbackSpeed]);
 
   // Current Position & Dynamics
   const stepData = activeTrajectory?.steps?.[currentStep] || null;
   const currentPos = stepData?.position || [0, 0, 0];
   const goalPos = activeTrajectory?.goal || [35, 25, 15];
+  const currentAction = stepData?.action ?? 0;
+
+  const distanceToGoal = Math.hypot(
+    currentPos[0] - goalPos[0],
+    currentPos[1] - goalPos[1],
+    currentPos[2] - goalPos[2]
+  );
 
   // Cumulative reward progressive scaling
   const maxReward = activeTrajectory?.reward || (agentType === 'connectome' ? 95.2 : 88.9);
@@ -173,6 +184,10 @@ export function App() {
               onPlayToggle={() => setIsPlaying(!isPlaying)}
               onReset={handleReset}
               onSeek={handleSeek}
+              playbackSpeed={playbackSpeed}
+              onSpeedChange={setPlaybackSpeed}
+              currentAction={currentAction}
+              distanceToGoal={distanceToGoal}
             />
 
             <MetricsPanel />
