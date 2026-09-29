@@ -56,8 +56,19 @@ When Google and HHMI Janelia released the complete *Drosophila* connectome (166k
 
 We built a dark-lab aesthetic web demo (React 18 + Vite + Three.js) that renders the Central Complex connectome and lets you inspect real-time navigation:
 
-- **1,243 Neurons Rendered in 3D**: Hardware-accelerated with Three.js `InstancedMesh`.
-- **Dynamic Synapse Pulses**: `LineSegments` pulsing proportionally to biological connection strength.
+<p align="center">
+  <img src="docs/images/connectome_navigator_3d.png" alt="Connectome Navigator 3D Simulation" width="100%" />
+</p>
+
+<p align="center">
+  <img src="docs/images/comparison_view.png" alt="Side-by-Side Agent Comparison View" width="100%" />
+</p>
+
+- **1,243 Neurons Rendered in 3D**: Hardware-accelerated with Three.js `InstancedMesh` in a single draw call.
+- **Interactive Neuron Inspector HUD**: Click any neuron to inspect cell type, neuropil ROI, degree, and 3D coordinates with a smooth camera glide action.
+- **Side-by-Side Comparison Mode**: Synchronized dual viewports directly evaluating Connectome vs. Baseline agents.
+- **Flight Controller & Steering Actuator HUD**: 4-way heading indicators (`FORWARD`, `TURN L`, `TURN R`, `HOVER`) illuminating dynamically in real-time.
+- **Multiple Camera Presets**: Orbit, 3rd-Person Chase Cam, Top-Down Dorsal, and Frontal Coronal.
 - **Side-by-Side Comparison**: Watch the Connectome Agent and Baseline Agent navigate simultaneously to the same 3D spatial target.
 - **Live Metrics Dashboard**: Real-time Recharts plots tracking reward curves, path efficiency, and neuron activations.
 

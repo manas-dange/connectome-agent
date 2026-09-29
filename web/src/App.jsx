@@ -15,14 +15,30 @@ export function App() {
   const [connectomeTraj, setConnectomeTraj] = useState(null);
   const [baselineTraj, setBaselineTraj] = useState(null);
 
-  const [currentTab, setCurrentTab] = useState('demo'); // 'demo', 'docs', or 'about'
-  const [viewMode, setViewMode] = useState('single'); // 'single' or 'compare'
+  const getUrlParam = (key, fallback) => {
+    if (typeof window === 'undefined') return fallback;
+    const params = new URLSearchParams(window.location.search);
+    return params.get(key) || fallback;
+  };
+
+  const [currentTab, setCurrentTab] = useState(() => getUrlParam('tab', 'demo'));
+  const [viewMode, setViewMode] = useState(() => getUrlParam('view', 'single'));
   const [agentType, setAgentType] = useState('connectome'); // 'connectome' or 'baseline'
   const [currentStep, setCurrentStep] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Sync state changes with URL query parameters for deep linking
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    params.set('tab', currentTab);
+    params.set('view', viewMode);
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.replaceState(null, '', newUrl);
+  }, [currentTab, viewMode]);
 
   // 1. Fetch Connectome and Trajectory Data
   useEffect(() => {
